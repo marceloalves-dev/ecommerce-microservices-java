@@ -1,0 +1,8 @@
+# Normaliza quebras de linha: LF no repositorio para todo texto.
+* text=auto eol=lf
+
+# Binarios (evita conversao)
+*.jar binary
+*.png binary
+*.jpg binary
+*.ico binary

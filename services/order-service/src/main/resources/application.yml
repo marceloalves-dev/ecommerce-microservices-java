@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: order-service
+  threads:
+    virtual:
+      enabled: true
+  mvc:
+    problemdetails:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/orders}
+    username: ${SPRING_DATASOURCE_USERNAME:ecom}
+    password: ${SPRING_DATASOURCE_PASSWORD:ecom}
+  jpa:
+    hibernate:
+      ddl-auto: validate          # Flyway e o dono do schema
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+  shutdown: graceful              # nao mata requisicoes em andamento no deploy
+  max-http-request-header-size: 16KB
+
+ecom:
+  http:
+    max-request-body-bytes: 131072
+  catalog:
+    currency: BRL
+    # Adapter confiavel temporario da Fase 1; sera substituido por PricingPort externo.
+    prices:
+      SKU-1: 10.00
+      SKU-2: 4.00
+      SKU-3: 25.50
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true             # /health/liveness e /health/readiness
+      show-details: when_authorized
+      group:
+        readiness:
+          include: readinessState,db
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  server:
+    port: 9090
