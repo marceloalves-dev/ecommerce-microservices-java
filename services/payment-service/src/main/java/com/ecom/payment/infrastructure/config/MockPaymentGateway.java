@@ -2,6 +2,7 @@ package com.ecom.payment.infrastructure.config;
 
 import com.ecom.contracts.event.OrderCreated;
 import com.ecom.payment.application.port.out.PaymentGateway;
+import com.ecom.payment.application.port.out.PaymentRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -17,5 +18,10 @@ class MockPaymentGateway implements PaymentGateway {
     @Override
     public Authorization authorize(OrderCreated order) {
         return approve ? new Authorization(true, null) : new Authorization(false, "pagamento recusado pelo gateway mock");
+    }
+
+    @Override
+    public Refund refund(PaymentRepository.Payment payment) {
+        return new Refund(true, null);
     }
 }

@@ -10,6 +10,10 @@ import com.ecom.order.domain.model.OrderItem;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.TimeLimiter;
+import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,20 +23,39 @@ import java.util.List;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletableFuture;
 
 @Component
 class InventoryGrpcAdapter implements InventoryPort {
     private final InventoryServiceGrpc.InventoryServiceBlockingStub client;
     private final long deadlineMillis;
+    private final TimeLimiter timeLimiter;
 
     InventoryGrpcAdapter(InventoryServiceGrpc.InventoryServiceBlockingStub client,
-                         @Value("${ecom.inventory.deadline-ms:1500}") long deadlineMillis) {
+                         @Value("${ecom.inventory.deadline-ms:1500}") long deadlineMillis,
+                         TimeLimiterRegistry timeLimiterRegistry) {
         this.client = client;
         this.deadlineMillis = deadlineMillis;
+        this.timeLimiter = timeLimiterRegistry.timeLimiter("inventoryGrpc");
     }
 
     @Override
+    @Retry(name = "inventoryGrpc")
+    @CircuitBreaker(name = "inventoryGrpc", fallbackMethod = "reserveFallback")
     public Reservation reserve(UUID orderId, List<OrderItem> items) {
+        try {
+            return timeLimiter.executeFutureSupplier(() -> CompletableFuture.supplyAsync(
+                    () -> reserveWithGrpc(orderId, items)));
+        } catch (Exception ex) {
+            Throwable cause = ex.getCause() == null ? ex : ex.getCause();
+            if (cause instanceof InventoryUnavailableException unavailable) {
+                throw unavailable;
+            }
+            throw new InventoryUnavailableException("estoque temporariamente indisponivel", cause);
+        }
+    }
+
+    private Reservation reserveWithGrpc(UUID orderId, List<OrderItem> items) {
         try {
             var response = client.withDeadlineAfter(deadlineMillis, TimeUnit.MILLISECONDS)
                     .reserveStock(ReserveStockRequest.newBuilder().setOrderId(orderId.toString())
@@ -49,6 +72,14 @@ class InventoryGrpcAdapter implements InventoryPort {
             }
             throw ex;
         }
+    }
+
+    @SuppressWarnings("unused") // chamado pelo proxy do Resilience4j
+    public Reservation reserveFallback(UUID orderId, List<OrderItem> items, Throwable cause) {
+        if (cause instanceof InventoryUnavailableException unavailable) {
+            throw unavailable;
+        }
+        throw new InventoryUnavailableException("estoque temporariamente indisponivel", cause);
     }
 }
 

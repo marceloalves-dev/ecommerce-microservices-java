@@ -10,6 +10,6 @@ public interface PaymentRepository {
     Payment save(Payment payment);
 
     record Payment(UUID id, UUID orderId, BigDecimal amount, String currency, Status status, String reason) {
-        public enum Status { APPROVED, DECLINED }
+        public enum Status { APPROVED, DECLINED, REFUNDED }
     }
 }

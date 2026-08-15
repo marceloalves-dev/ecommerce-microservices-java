@@ -86,4 +86,21 @@ class PostgresInventoryRepositoryIT {
         assertThat(repository.releaseExpiredReservations(Instant.now(), 100)).isZero();
         assertThat(repository.check(List.of(new InventoryUseCase.Line("SKU-1", 10))).available()).isTrue();
     }
+
+    @Test
+    void inbox_processa_confirmacao_uma_unica_vez() throws Exception {
+        Reservation reservation = repository.reserve(UUID.randomUUID(), List.of(new InventoryUseCase.Line("SKU-1", 2)));
+        UUID eventId = UUID.randomUUID();
+
+        assertThat(repository.confirmOnce("inventory-order-lifecycle", eventId, reservation.id())).isTrue();
+        assertThat(repository.confirmOnce("inventory-order-lifecycle", eventId, reservation.id())).isFalse();
+        try (var connection = dataSource.getConnection(); var statement = connection.prepareStatement(
+                "SELECT status FROM stock_reservations WHERE id = ?")) {
+            statement.setObject(1, reservation.id());
+            try (var result = statement.executeQuery()) {
+                assertThat(result.next()).isTrue();
+                assertThat(result.getString("status")).isEqualTo("CONFIRMED");
+            }
+        }
+    }
 }

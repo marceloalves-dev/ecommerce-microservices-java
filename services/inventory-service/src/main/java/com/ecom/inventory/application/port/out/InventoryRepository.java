@@ -17,6 +17,10 @@ public interface InventoryRepository {
 
     void release(UUID reservationId);
 
+    boolean confirmOnce(String consumerName, UUID eventId, UUID reservationId);
+
+    boolean releaseOnce(String consumerName, UUID eventId, UUID reservationId);
+
     /**
      * Libera reservas ainda ativas cujo prazo tenha vencido. A implementacao deve
      * processar cada reserva de forma atomica para que execucoes concorrentes nao

@@ -56,4 +56,17 @@ class ProcessPaymentResultServiceTest {
         verify(events).append(eq("order.cancelled.v1"), eq(order.id()), eq("OrderCancelled"), any());
         verify(events, never()).append(eq("order.confirmed.v1"), any(), any(), any());
     }
+
+    @Test
+    void evento_repetido_nao_altera_o_pedido_nem_publica_novamente() {
+        UUID orderId = UUID.randomUUID();
+        EventEnvelope<PaymentApproved> event = EventEnvelope.of("PaymentApproved", orderId,
+                new PaymentApproved(orderId, UUID.randomUUID(), BigDecimal.TEN, "BRL"));
+        when(processedEvents.register("order-payment-result", event.eventId())).thenReturn(false);
+
+        new ProcessPaymentResultService(orders, processedEvents, events).approved(event);
+
+        verify(orders, never()).findById(any());
+        verify(events, never()).append(any(), any(), any(), any());
+    }
 }

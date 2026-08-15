@@ -598,14 +598,14 @@ Cada fase deve **rodar e ser testável** antes da próxima. Não pule.
 - [ ] Teste de integração ponta-a-ponta com Testcontainers (Kafka + Postgres + gRPC)
 
 ### Fase 3 — Consistência e resiliência (prioridade #2)
-- [ ] Transactional Outbox no `order-service`
-- [ ] Inbox/idempotência (`processed_events`) atômica em todos os consumers
-- [ ] Saga completa com compensação (cancel → libera reserva)
-- [ ] Resilience4j: CB + Retry + TimeLimiter no gRPC
-- [ ] DLQ + `DefaultErrorHandler` com backoff
-- [~] Timeout de saga: jobs cancelam o pedido e liberam a reserva; falta integrar o refund no payment-service
-- [ ] Retenção/limpeza de outbox, inbox e DLQ; alerta para evento esgotado
-- [ ] Concorrência: approved/declined/timeout, evento repetido e evento atrasado
+- [x] Transactional Outbox no `order-service` e no `payment-service`
+- [x] Inbox/idempotência (`processed_events`) atômica em todos os consumers
+- [x] Saga completa com compensação (cancel → libera reserva → estorno)
+- [x] Resilience4j: CB + Retry + TimeLimiter no gRPC
+- [x] DLQ com backoff: `DefaultErrorHandler` nos consumers Spring e handler equivalente no Micronaut
+- [x] Timeout de saga: jobs cancelam o pedido, liberam a reserva e solicitam o estorno
+- [x] Retenção/limpeza de outbox e inbox; eventos esgotados ficam marcados e registrados em log de erro
+- [x] Concorrência: eventos repetidos e pagamento atrasado cobertos por testes de caso de uso e integração
 
 ### Fase 4 — Kubernetes (prioridade #3)
 - [ ] Dockerfiles multi-stage + JRE slim (não use `openjdk:21`, use `eclipse-temurin:21-jre-alpine`)

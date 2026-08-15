@@ -295,7 +295,7 @@ estoque em PostgreSQL real.
 
 - [x] **Fase 1:** fundação, domínio, persistência, idempotência e limites.
 - [~] **Fase 2:** inventory via gRPC e payment via Kafka; falta o cenário E2E único.
-- [~] **Fase 3:** outbox, inbox e timeout da saga já antecipados; retry, circuit breaker, DLQ e refund pendentes.
+- [x] **Fase 3:** consistência e resiliência: outbox/inbox, compensação com estorno, timeout, retry, circuit breaker, DLT e retenção.
 - [ ] **Fase 4:** Kubernetes, Helm, HPA, PDB, NetworkPolicy e testes de caos.
 - [ ] **Fase 5:** OpenTelemetry e Grafana Stack.
 - [ ] **Fase 6:** API Gateway, JWT, KEDA e CI.

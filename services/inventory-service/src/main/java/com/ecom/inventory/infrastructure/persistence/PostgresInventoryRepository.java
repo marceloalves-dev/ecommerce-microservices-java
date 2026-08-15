@@ -91,6 +91,16 @@ class PostgresInventoryRepository implements InventoryRepository {
     }
 
     @Override
+    public boolean confirmOnce(String consumerName, UUID eventId, UUID reservationId) {
+        return processLifecycleEvent(consumerName, eventId, reservationId, true);
+    }
+
+    @Override
+    public boolean releaseOnce(String consumerName, UUID eventId, UUID reservationId) {
+        return processLifecycleEvent(consumerName, eventId, reservationId, false);
+    }
+
+    @Override
     public int releaseExpiredReservations(Instant now, int limit) {
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
@@ -122,27 +132,7 @@ class PostgresInventoryRepository implements InventoryRepository {
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
             try {
-                Reservation reservation = findReservationByIdForUpdate(connection, reservationId);
-                if (reservation == null) {
-                    throw new IllegalArgumentException("reserva inexistente");
-                }
-                if (reservation.status() == Reservation.Status.REJECTED
-                        || reservation.status() == (confirm ? Reservation.Status.CONFIRMED : Reservation.Status.RELEASED)) {
-                    connection.commit();
-                    return;
-                }
-                if (reservation.status() != Reservation.Status.RESERVED) {
-                    throw new IllegalStateException("transicao de reserva invalida: " + reservation.status());
-                }
-                if (!confirm) {
-                    restoreStock(connection, reservationId);
-                }
-                try (PreparedStatement statement = connection.prepareStatement(
-                        "UPDATE stock_reservations SET status = ? WHERE id = ?")) {
-                    statement.setString(1, confirm ? Reservation.Status.CONFIRMED.name() : Reservation.Status.RELEASED.name());
-                    statement.setObject(2, reservationId);
-                    statement.executeUpdate();
-                }
+                changeReservation(connection, reservationId, confirm);
                 connection.commit();
             } catch (SQLException | RuntimeException ex) {
                 connection.rollback();
@@ -152,6 +142,60 @@ class PostgresInventoryRepository implements InventoryRepository {
             }
         } catch (SQLException ex) {
             throw new InventoryPersistenceException(ex);
+        }
+    }
+
+    private boolean processLifecycleEvent(String consumerName, UUID eventId, UUID reservationId, boolean confirm) {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                if (!registerProcessedEvent(connection, consumerName, eventId)) {
+                    connection.commit();
+                    return false;
+                }
+                changeReservation(connection, reservationId, confirm);
+                connection.commit();
+                return true;
+            } catch (SQLException | RuntimeException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException ex) {
+            throw new InventoryPersistenceException(ex);
+        }
+    }
+
+    private static boolean registerProcessedEvent(Connection connection, String consumerName, UUID eventId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO inventory_processed_events (consumer_name, event_id) VALUES (?, ?) ON CONFLICT DO NOTHING")) {
+            statement.setString(1, consumerName);
+            statement.setObject(2, eventId);
+            return statement.executeUpdate() == 1;
+        }
+    }
+
+    private static void changeReservation(Connection connection, UUID reservationId, boolean confirm) throws SQLException {
+        Reservation reservation = findReservationByIdForUpdate(connection, reservationId);
+        if (reservation == null) {
+            throw new IllegalArgumentException("reserva inexistente");
+        }
+        if (reservation.status() == Reservation.Status.REJECTED
+                || reservation.status() == (confirm ? Reservation.Status.CONFIRMED : Reservation.Status.RELEASED)) {
+            return;
+        }
+        if (reservation.status() != Reservation.Status.RESERVED) {
+            throw new IllegalStateException("transicao de reserva invalida: " + reservation.status());
+        }
+        if (!confirm) {
+            restoreStock(connection, reservationId);
+        }
+        try (PreparedStatement statement = connection.prepareStatement(
+                "UPDATE stock_reservations SET status = ? WHERE id = ?")) {
+            statement.setString(1, confirm ? Reservation.Status.CONFIRMED.name() : Reservation.Status.RELEASED.name());
+            statement.setObject(2, reservationId);
+            statement.executeUpdate();
         }
     }
 

@@ -15,3 +15,6 @@ datasources:
 inventory:
   reservation-expiration:
     fixed-delay: ${RESERVATION_EXPIRATION_FIXED_DELAY:1m}
+  messaging:
+    retention-days: ${MESSAGE_RETENTION_DAYS:30}
+    cleanup-fixed-delay: ${MESSAGE_CLEANUP_FIXED_DELAY:1h}

@@ -6,6 +6,11 @@ import com.ecom.contracts.event.OrderCreated;
 public interface PaymentGateway {
     Authorization authorize(OrderCreated order);
 
+    Refund refund(PaymentRepository.Payment payment);
+
     record Authorization(boolean approved, String reason) {
+    }
+
+    record Refund(boolean successful, String reason) {
     }
 }

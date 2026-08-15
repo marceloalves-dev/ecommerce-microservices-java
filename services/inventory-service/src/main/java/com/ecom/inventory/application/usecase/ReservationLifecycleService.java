@@ -25,6 +25,18 @@ public class ReservationLifecycleService {
         repository.release(reservationId);
     }
 
+    public boolean confirmOnce(String consumerName, UUID eventId, UUID reservationId) {
+        requireEvent(consumerName, eventId);
+        requireId(reservationId);
+        return repository.confirmOnce(consumerName, eventId, reservationId);
+    }
+
+    public boolean releaseOnce(String consumerName, UUID eventId, UUID reservationId) {
+        requireEvent(consumerName, eventId);
+        requireId(reservationId);
+        return repository.releaseOnce(consumerName, eventId, reservationId);
+    }
+
     public int releaseExpired(Instant now, int limit) {
         if (now == null) {
             throw new IllegalArgumentException("instante de expiracao obrigatorio");
@@ -38,6 +50,12 @@ public class ReservationLifecycleService {
     private static void requireId(UUID reservationId) {
         if (reservationId == null) {
             throw new IllegalArgumentException("reservationId obrigatorio");
+        }
+    }
+
+    private static void requireEvent(String consumerName, UUID eventId) {
+        if (consumerName == null || consumerName.isBlank() || eventId == null) {
+            throw new IllegalArgumentException("consumerName e eventId obrigatorios");
         }
     }
 }

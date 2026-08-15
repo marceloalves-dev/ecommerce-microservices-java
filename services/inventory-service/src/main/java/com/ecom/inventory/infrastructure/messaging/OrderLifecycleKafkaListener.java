@@ -8,9 +8,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micronaut.configuration.kafka.annotation.KafkaListener;
 import io.micronaut.configuration.kafka.annotation.Topic;
+import io.micronaut.configuration.kafka.annotation.ErrorStrategy;
+import io.micronaut.configuration.kafka.annotation.ErrorStrategyValue;
 
 @KafkaListener(groupId = "inventory-service")
+@ErrorStrategy(value = ErrorStrategyValue.RETRY_EXPONENTIALLY_ON_ERROR, retryCount = 3, retryDelay = "1s")
 public class OrderLifecycleKafkaListener {
+    private static final String CONSUMER = "inventory-order-lifecycle";
     private final ObjectMapper objectMapper;
     private final ReservationLifecycleService reservations;
 
@@ -22,12 +26,12 @@ public class OrderLifecycleKafkaListener {
     @Topic("order.confirmed.v1")
     public void confirmed(String raw) throws Exception {
         var event = objectMapper.readValue(raw, new TypeReference<EventEnvelope<OrderConfirmed>>() { });
-        reservations.confirm(event.payload().reservationId());
+        reservations.confirmOnce(CONSUMER, event.eventId(), event.payload().reservationId());
     }
 
     @Topic("order.cancelled.v1")
     public void cancelled(String raw) throws Exception {
         var event = objectMapper.readValue(raw, new TypeReference<EventEnvelope<OrderCancelled>>() { });
-        reservations.release(event.payload().reservationId());
+        reservations.releaseOnce(CONSUMER, event.eventId(), event.payload().reservationId());
     }
 }
