@@ -12,3 +12,6 @@ datasources:
     url: ${JDBC_URL:jdbc:postgresql://localhost:5434/inventory}
     username: ${JDBC_USER:ecom}
     password: ${JDBC_PASSWORD:ecom}
+inventory:
+  reservation-expiration:
+    fixed-delay: ${RESERVATION_EXPIRATION_FIXED_DELAY:1m}

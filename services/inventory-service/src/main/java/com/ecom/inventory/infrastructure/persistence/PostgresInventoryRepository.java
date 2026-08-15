@@ -90,6 +90,34 @@ class PostgresInventoryRepository implements InventoryRepository {
         changeReservation(reservationId, false);
     }
 
+    @Override
+    public int releaseExpiredReservations(Instant now, int limit) {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                List<UUID> expiredReservationIds = findExpiredReservationIdsForUpdate(connection, now, limit);
+                for (UUID reservationId : expiredReservationIds) {
+                    restoreStock(connection, reservationId);
+                    try (PreparedStatement statement = connection.prepareStatement(
+                            "UPDATE stock_reservations SET status = ? WHERE id = ?")) {
+                        statement.setString(1, Reservation.Status.RELEASED.name());
+                        statement.setObject(2, reservationId);
+                        statement.executeUpdate();
+                    }
+                }
+                connection.commit();
+                return expiredReservationIds.size();
+            } catch (SQLException | RuntimeException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException ex) {
+            throw new InventoryPersistenceException(ex);
+        }
+    }
+
     private void changeReservation(UUID reservationId, boolean confirm) {
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
@@ -135,6 +163,29 @@ class PostgresInventoryRepository implements InventoryRepository {
                 if (!result.next()) return null;
                 return new Reservation(reservationId, (UUID) result.getObject("order_id"),
                         Reservation.Status.valueOf(result.getString("status")), result.getTimestamp("expires_at").toInstant());
+            }
+        }
+    }
+
+    /**
+     * SKIP LOCKED permite que mais de uma instancia execute a varredura sem
+     * disputar as mesmas reservas nem bloquear o processamento de pagamentos.
+     */
+    private static List<UUID> findExpiredReservationIdsForUpdate(Connection connection, Instant now, int limit)
+            throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT id FROM stock_reservations "
+                        + "WHERE status = ? AND expires_at <= ? "
+                        + "ORDER BY expires_at ASC LIMIT ? FOR UPDATE SKIP LOCKED")) {
+            statement.setString(1, Reservation.Status.RESERVED.name());
+            statement.setTimestamp(2, Timestamp.from(now));
+            statement.setInt(3, limit);
+            try (ResultSet result = statement.executeQuery()) {
+                List<UUID> ids = new ArrayList<>();
+                while (result.next()) {
+                    ids.add((UUID) result.getObject("id"));
+                }
+                return ids;
             }
         }
     }

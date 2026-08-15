@@ -603,7 +603,7 @@ Cada fase deve **rodar e ser testável** antes da próxima. Não pule.
 - [ ] Saga completa com compensação (cancel → libera reserva)
 - [ ] Resilience4j: CB + Retry + TimeLimiter no gRPC
 - [ ] DLQ + `DefaultErrorHandler` com backoff
-- [ ] Timeout de saga (job agendado)
+- [~] Timeout de saga: expiração e liberação automática no inventory-service; falta cancelar o pedido e tratar refund
 - [ ] Retenção/limpeza de outbox, inbox e DLQ; alerta para evento esgotado
 - [ ] Concorrência: approved/declined/timeout, evento repetido e evento atrasado
 

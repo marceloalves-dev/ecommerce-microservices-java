@@ -61,7 +61,8 @@ pedido. Kubernetes, gateway e observabilidade continuam apenas no roadmap.
 - Virtual Threads, graceful shutdown, readiness e métricas Prometheus.
 - Testes unitários, de arquitetura e de integração com Testcontainers.
 - Contrato Protobuf versionado e geração de stubs no Maven.
-- Reserva de estoque atômica e idempotente por `orderId`, com TTL persistido.
+- Reserva de estoque atômica e idempotente por `orderId`, com TTL persistido e
+  liberação automática de reservas vencidas.
 - `order-service` reserva por gRPC e publica `OrderCreated` por transactional outbox.
 - `payment-service` processa uma única cobrança por pedido e devolve o resultado por outbox.
 - Consumers usam registro atômico de eventos processados; confirmações e cancelamentos

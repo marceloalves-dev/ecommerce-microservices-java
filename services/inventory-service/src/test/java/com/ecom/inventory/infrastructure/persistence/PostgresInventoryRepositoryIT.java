@@ -14,6 +14,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -69,5 +70,20 @@ class PostgresInventoryRepositoryIT {
         repository.release(reservation.id());
 
         assertThat(repository.check(List.of(new InventoryUseCase.Line("SKU-2", 5))).available()).isTrue();
+    }
+
+    @Test
+    void libera_reservas_expiradas_sem_restituir_o_estoque_duas_vezes() throws Exception {
+        Reservation reservation = repository.reserve(UUID.randomUUID(), List.of(new InventoryUseCase.Line("SKU-1", 6)));
+        try (var connection = dataSource.getConnection(); var statement = connection.prepareStatement(
+                "UPDATE stock_reservations SET expires_at = ? WHERE id = ?")) {
+            statement.setTimestamp(1, java.sql.Timestamp.from(Instant.now().minusSeconds(1)));
+            statement.setObject(2, reservation.id());
+            statement.executeUpdate();
+        }
+
+        assertThat(repository.releaseExpiredReservations(Instant.now(), 100)).isEqualTo(1);
+        assertThat(repository.releaseExpiredReservations(Instant.now(), 100)).isZero();
+        assertThat(repository.check(List.of(new InventoryUseCase.Line("SKU-1", 10))).available()).isTrue();
     }
 }
