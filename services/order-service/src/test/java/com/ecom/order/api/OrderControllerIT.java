@@ -3,10 +3,13 @@ package com.ecom.order.api;
 import com.ecom.order.api.dto.CreateOrderRequest;
 import com.ecom.order.api.dto.OrderListResponse;
 import com.ecom.order.api.dto.OrderResponse;
+import com.ecom.order.application.port.out.InventoryPort;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +28,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 /**
  * Teste de integração ponta a ponta: HTTP -> use case -> JPA -> Postgres real
@@ -32,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "management.server.port=0")
+        properties = {"management.server.port=0", "ecom.outbox.enabled=false", "spring.kafka.listener.auto-startup=false"})
 @Testcontainers
 class OrderControllerIT {
 
@@ -43,6 +48,15 @@ class OrderControllerIT {
 
     @Autowired
     TestRestTemplate rest;
+
+    @MockBean
+    InventoryPort inventory;
+
+    @BeforeEach
+    void reserveInventory() {
+        when(inventory.reserve(any(), any()))
+                .thenAnswer(invocation -> new InventoryPort.Reservation(UUID.randomUUID(), true));
+    }
 
     @Test
     void cria_com_preco_do_catalogo_e_recupera_pedido() {
@@ -57,7 +71,7 @@ class OrderControllerIT {
         assertThat(created.getHeaders().getLocation().toString())
                 .isEqualTo("/api/v1/orders/" + created.getBody().id());
         assertThat(created.getBody()).isNotNull();
-        assertThat(created.getBody().status().name()).isEqualTo("PENDING");
+        assertThat(created.getBody().status().name()).isEqualTo("AWAITING_PAYMENT");
         assertThat(created.getBody().currency().name()).isEqualTo("BRL");
         assertThat(created.getBody().totalAmount()).isEqualByComparingTo("32.00");
 

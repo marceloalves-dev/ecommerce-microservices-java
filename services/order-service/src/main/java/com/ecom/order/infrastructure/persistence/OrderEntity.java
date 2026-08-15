@@ -38,6 +38,9 @@ public class OrderEntity {
     @Column(nullable = false, length = 32)
     private OrderStatus status;
 
+    @Column(name = "reservation_id")
+    private UUID reservationId;
+
     @Column(name = "total_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal totalAmount;
 
@@ -67,13 +70,14 @@ public class OrderEntity {
     }
 
     public OrderEntity(UUID id, UUID customerId, OrderStatus status, BigDecimal totalAmount,
-                       CurrencyCode currency, String cancellationReason,
+                       CurrencyCode currency, UUID reservationId, String cancellationReason,
                        Instant createdAt, Instant updatedAt, Long version) {
         this.id = id;
         this.customerId = customerId;
         this.status = status;
         this.totalAmount = totalAmount;
         this.currency = currency;
+        this.reservationId = reservationId;
         this.cancellationReason = cancellationReason;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -110,6 +114,10 @@ public class OrderEntity {
         return cancellationReason;
     }
 
+    public UUID getReservationId() {
+        return reservationId;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -130,6 +138,7 @@ public class OrderEntity {
         this.status = order.status();
         this.totalAmount = order.totalAmount();
         this.currency = order.currency();
+        this.reservationId = order.reservationId();
         this.cancellationReason = order.cancellationReason();
         this.updatedAt = order.updatedAt();
     }

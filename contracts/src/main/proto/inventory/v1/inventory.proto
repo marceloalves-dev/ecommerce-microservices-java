@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package inventory.v1;
+
+option java_multiple_files = true;
+option java_package = "com.ecom.inventory.grpc.v1";
+
+service InventoryService {
+  rpc CheckAvailability(CheckAvailabilityRequest) returns (CheckAvailabilityResponse);
+  rpc ReserveStock(ReserveStockRequest) returns (ReserveStockResponse);
+}
+
+message CheckAvailabilityRequest {
+  repeated Item items = 1;
+}
+
+message Item {
+  string sku = 1;
+  int32 quantity = 2;
+}
+
+message CheckAvailabilityResponse {
+  bool available = 1;
+  repeated string unavailable_skus = 2;
+}
+
+message ReserveStockRequest {
+  string order_id = 1;
+  repeated Item items = 2;
+}
+
+message ReserveStockResponse {
+  string reservation_id = 1;
+  ReservationStatus status = 2;
+}
+
+enum ReservationStatus {
+  RESERVATION_STATUS_UNSPECIFIED = 0;
+  RESERVATION_STATUS_CONFIRMED = 1;
+  RESERVATION_STATUS_REJECTED = 2;
+}

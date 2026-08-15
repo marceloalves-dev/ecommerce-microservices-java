@@ -4,6 +4,8 @@ import com.ecom.order.application.port.in.CreateOrderUseCase.CreateOrderCommand;
 import com.ecom.order.application.port.out.IdempotencyRepository;
 import com.ecom.order.application.port.out.OrderRepository;
 import com.ecom.order.application.port.out.PricingPort;
+import com.ecom.order.application.port.out.InventoryPort;
+import com.ecom.order.application.port.out.OrderEventPublisher;
 import com.ecom.order.domain.exception.IdempotencyConflictException;
 import com.ecom.order.domain.model.CurrencyCode;
 import com.ecom.order.domain.model.Order;
@@ -40,11 +42,17 @@ class CreateOrderServiceTest {
     @Mock
     PricingPort pricing;
 
+    @Mock
+    InventoryPort inventory;
+
+    @Mock
+    OrderEventPublisher events;
+
     CreateOrderService service;
 
     @BeforeEach
     void setUp() {
-        service = new CreateOrderService(orders, idempotency, pricing);
+        service = new CreateOrderService(orders, idempotency, pricing, inventory, events);
     }
 
     @Test
@@ -56,6 +64,7 @@ class CreateOrderServiceTest {
                         claimId, invocation.getArgument(2), null));
         when(pricing.getPrice("SKU-1"))
                 .thenReturn(new PricingPort.Price(new BigDecimal("10.00"), CurrencyCode.BRL));
+        when(inventory.reserve(any(), any())).thenReturn(new InventoryPort.Reservation(UUID.randomUUID(), true));
         when(orders.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Order created = service.create(command);
@@ -76,6 +85,7 @@ class CreateOrderServiceTest {
                 new BigDecimal("10.00"),
                 CurrencyCode.BRL,
                 com.ecom.order.domain.model.OrderStatus.PENDING,
+                null,
                 null,
                 java.time.Instant.now(),
                 java.time.Instant.now(),

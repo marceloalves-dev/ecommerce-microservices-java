@@ -4,6 +4,7 @@ import com.ecom.order.domain.exception.IllegalStateTransitionException;
 import com.ecom.order.domain.exception.IdempotencyConflictException;
 import com.ecom.order.domain.exception.InvalidOrderException;
 import com.ecom.order.domain.exception.OrderNotFoundException;
+import com.ecom.order.domain.exception.InventoryUnavailableException;
 import com.ecom.order.api.config.RequestBodySizeLimitFilter.PayloadTooLargeIOException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -57,6 +58,14 @@ class GlobalExceptionHandler {
                 HttpStatus.CONFLICT, "O pedido foi alterado por outra operacao");
         pd.setTitle("Conflito de concorrencia");
         pd.setType(URI.create("urn:ecom:order:concurrent-update"));
+        return pd;
+    }
+
+    @ExceptionHandler(InventoryUnavailableException.class)
+    ProblemDetail handleInventoryUnavailable(InventoryUnavailableException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+        pd.setTitle("Estoque temporariamente indisponivel");
+        pd.setType(URI.create("urn:ecom:inventory:unavailable"));
         return pd;
     }
 

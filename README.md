@@ -7,7 +7,7 @@
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
-![Status](https://img.shields.io/badge/status-fase_1_conclu%C3%ADda-brightgreen)
+![Status](https://img.shields.io/badge/status-fase_2_em_andamento-yellow)
 
 ## Sobre o projeto
 
@@ -23,19 +23,21 @@ subir localmente e passar pelos testes antes da próxima. O plano detalhado est�
 
 ## Estado atual
 
-**Fase 1 — Fundação endurecida: concluída e validada.**
+**Fase 2 — comunicação distribuída: em andamento.** A fundação da Fase 1
+permanece concluída e validada; contratos, estoque, pagamento e o fluxo da saga
+já foram introduzidos. Falta consolidar o teste ponta a ponta dos três processos
+com Kafka, PostgreSQL e gRPC no mesmo cenário.
 
-Hoje o repositório contém um `order-service` funcional. Os demais serviços e a
-comunicação distribuída aparecem no roadmap, mas ainda não são apresentados como
-implementados.
+Hoje o repositório contém os três serviços necessários para a primeira saga de
+pedido. Kubernetes, gateway e observabilidade continuam apenas no roadmap.
 
 | Componente | Tecnologia | Estado |
 |---|---|---|
-| `order-service` | Spring Boot 3.5 | Concluído |
+| `order-service` | Spring Boot 3.5 | Saga iniciada: gRPC + Kafka/outbox |
 | PostgreSQL de pedidos | PostgreSQL 16 + Flyway | Concluído |
 | Infraestrutura local | Docker Compose + Redpanda | Validada |
-| `inventory-service` | Micronaut 4 + gRPC | Próxima fase |
-| `payment-service` | Spring Boot + Kafka | Planejado |
+| `inventory-service` | Micronaut 4 + gRPC | Implementado |
+| `payment-service` | Spring Boot + Kafka | Implementado |
 | Kubernetes e Helm | kind + Helm | Planejado |
 | Observabilidade | OpenTelemetry + Grafana Stack | Planejado |
 | `api-gateway` | Spring Cloud Gateway + JWT | Planejado |
@@ -58,6 +60,12 @@ implementados.
 - Respostas de erro no formato `ProblemDetail`.
 - Virtual Threads, graceful shutdown, readiness e métricas Prometheus.
 - Testes unitários, de arquitetura e de integração com Testcontainers.
+- Contrato Protobuf versionado e geração de stubs no Maven.
+- Reserva de estoque atômica e idempotente por `orderId`, com TTL persistido.
+- `order-service` reserva por gRPC e publica `OrderCreated` por transactional outbox.
+- `payment-service` processa uma única cobrança por pedido e devolve o resultado por outbox.
+- Consumers usam registro atômico de eventos processados; confirmações e cancelamentos
+  finalizam ou compensam a reserva no inventory.
 
 ## Arquitetura atual
 
@@ -268,22 +276,23 @@ mvn clean verify
 mvn verify -DskipITs
 ```
 
-Resultado validado da Fase 1:
+Resultado validado até o incremento atual da Fase 2:
 
 - 11 testes de domínio;
-- 4 testes de caso de uso;
 - 6 testes de arquitetura;
-- 11 testes de integração com PostgreSQL real;
-- **32 testes no total**.
+- 6 testes de caso de uso;
+- 13 testes de integração com PostgreSQL real;
+- **36 testes no total**.
 
-Os testes de integração cobrem Flyway V1 → V2, API HTTP, persistência, paginação,
-limites, idempotência sequencial e concorrente e respostas de erro.
+Os testes de integração cobrem Flyway, API HTTP, persistência, paginação,
+limites, idempotência sequencial e concorrente, respostas de erro e reserva de
+estoque em PostgreSQL real.
 
 ## Roadmap resumido
 
 - [x] **Fase 1:** fundação, domínio, persistência, idempotência e limites.
-- [ ] **Fase 2:** inventory via gRPC e payment via Kafka.
-- [ ] **Fase 3:** outbox, inbox, saga, retry, circuit breaker e DLQ.
+- [~] **Fase 2:** inventory via gRPC e payment via Kafka; falta o cenário E2E único.
+- [~] **Fase 3:** outbox e inbox já antecipados; retry, circuit breaker, DLQ e timeout da saga pendentes.
 - [ ] **Fase 4:** Kubernetes, Helm, HPA, PDB, NetworkPolicy e testes de caos.
 - [ ] **Fase 5:** OpenTelemetry e Grafana Stack.
 - [ ] **Fase 6:** API Gateway, JWT, KEDA e CI.

@@ -16,6 +16,11 @@
     <description>Orquestra o pedido. Owner da Saga.</description>
 
     <dependencies>
+        <dependency>
+            <groupId>com.ecom</groupId>
+            <artifactId>contracts</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- Web / API -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -53,6 +58,18 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
         </dependency>
 
         <!-- Lombok (so @RequiredArgsConstructor + campos final) -->
@@ -97,6 +114,8 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <!-- Mantem o jar normal para consumidores internos do monorepo; o executavel vira *-exec.jar. -->
+                    <classifier>exec</classifier>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>

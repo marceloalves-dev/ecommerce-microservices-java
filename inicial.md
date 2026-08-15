@@ -588,13 +588,13 @@ Cada fase deve **rodar e ser testável** antes da próxima. Não pule.
 - [x] Testcontainers local; execução automática no CI permanece na Fase 6
 
 ### Fase 2 — Comunicação (prioridade #1)
-- [ ] `contracts/proto/` + geração via `protobuf-maven-plugin`
-- [ ] `inventory-service` em **Micronaut** expondo gRPC
-- [ ] `order-service` chama inventory via gRPC (`InventoryGrpcAdapter implements InventoryPort`)
-- [ ] `payment-service` com Kafka: consome `order.created.v1`, publica `payment.approved/declined`
-- [ ] Envelope de evento padronizado
-- [ ] Reserva idempotente por `orderId`, TTL e decremento atômico para não vender estoque negativo
-- [ ] Pagamento único por `orderId` e chave idempotente no gateway mock
+- [x] `contracts/proto/` + geração via `protobuf-maven-plugin`
+- [x] `inventory-service` em **Micronaut** expondo gRPC
+- [x] `order-service` chama inventory via gRPC (`InventoryGrpcAdapter implements InventoryPort`)
+- [x] `payment-service` com Kafka: consome `order.created.v1`, publica `payment.approved/declined`
+- [x] Envelope de evento padronizado
+- [x] Reserva idempotente por `orderId`, TTL e decremento atômico para não vender estoque negativo
+- [x] Pagamento único por `orderId` e chave idempotente no gateway mock
 - [ ] Teste de integração ponta-a-ponta com Testcontainers (Kafka + Postgres + gRPC)
 
 ### Fase 3 — Consistência e resiliência (prioridade #2)

@@ -2,17 +2,23 @@ package com.ecom.order.application.usecase;
 
 import com.ecom.order.application.port.in.CreateOrderUseCase;
 import com.ecom.order.application.port.out.IdempotencyRepository;
+import com.ecom.order.application.port.out.InventoryPort;
+import com.ecom.order.application.port.out.OrderEventPublisher;
 import com.ecom.order.application.port.out.OrderRepository;
 import com.ecom.order.application.port.out.PricingPort;
 import com.ecom.order.domain.exception.IdempotencyConflictException;
 import com.ecom.order.domain.exception.InvalidOrderException;
 import com.ecom.order.domain.model.Order;
 import com.ecom.order.domain.model.OrderItem;
+import com.ecom.contracts.event.EventEnvelope;
+import com.ecom.contracts.event.OrderCreated;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +27,8 @@ class CreateOrderService implements CreateOrderUseCase {
     private final OrderRepository orderRepository;
     private final IdempotencyRepository idempotencyRepository;
     private final PricingPort pricingPort;
+    private final InventoryPort inventoryPort;
+    private final OrderEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -70,8 +78,22 @@ class CreateOrderService implements CreateOrderUseCase {
                         priced.line().quantity(),
                         priced.price().amount()))
                 .toList();
-        Order order = Order.create(command.customerId(), items, currencies.getFirst());
+        UUID orderId = UUID.nameUUIDFromBytes((command.customerId() + ":" + command.idempotencyKey().trim())
+                .getBytes(StandardCharsets.UTF_8));
+        Order order = Order.create(orderId, command.customerId(), items, currencies.getFirst());
+        InventoryPort.Reservation reservation = inventoryPort.reserve(order.id(), order.items());
+        if (reservation.accepted()) {
+            order.awaitPayment(reservation.id());
+        } else {
+            order.reject("estoque indisponivel");
+        }
         Order saved = orderRepository.save(order);
+        if (saved.status() == com.ecom.order.domain.model.OrderStatus.AWAITING_PAYMENT) {
+            var payload = new OrderCreated(saved.id(), saved.customerId(), saved.items().stream()
+                    .map(item -> new OrderCreated.Item(item.sku(), item.quantity(), item.unitPrice())).toList(),
+                    saved.totalAmount(), saved.currency().name(), saved.reservationId().toString());
+            eventPublisher.append("order.created.v1", saved.id(), "OrderCreated", EventEnvelope.of("OrderCreated", saved.id(), payload));
+        }
         idempotencyRepository.complete(claim.id(), saved.id());
         return saved;
     }

@@ -28,13 +28,14 @@ public class Order {
     private final BigDecimal totalAmount;
     private final CurrencyCode currency;
     private OrderStatus status;
+    private UUID reservationId;
     private String cancellationReason;
     private final Instant createdAt;
     private Instant updatedAt;
     private final Long version;
 
     private Order(UUID id, UUID customerId, List<OrderItem> items, BigDecimal totalAmount,
-                  CurrencyCode currency, OrderStatus status, String cancellationReason,
+                  CurrencyCode currency, OrderStatus status, UUID reservationId, String cancellationReason,
                   Instant createdAt, Instant updatedAt, Long version) {
         this.id = id;
         this.customerId = customerId;
@@ -42,6 +43,7 @@ public class Order {
         this.totalAmount = totalAmount;
         this.currency = currency;
         this.status = status;
+        this.reservationId = reservationId;
         this.cancellationReason = cancellationReason;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -50,6 +52,14 @@ public class Order {
 
     /** Cria um pedido novo em {@link OrderStatus#PENDING}. */
     public static Order create(UUID customerId, List<OrderItem> items, CurrencyCode currency) {
+        return create(UUID.randomUUID(), customerId, items, currency);
+    }
+
+    /** Cria com uma identidade previamente alocada para tornar a saga reexecutavel. */
+    public static Order create(UUID id, UUID customerId, List<OrderItem> items, CurrencyCode currency) {
+        if (id == null) {
+            throw new InvalidOrderException("id obrigatorio");
+        }
         if (customerId == null) {
             throw new InvalidOrderException("customerId obrigatorio");
         }
@@ -76,9 +86,9 @@ public class Order {
             throw new InvalidOrderException("totalAmount excede o limite monetario");
         }
         Instant now = Instant.now();
-        return new Order(UUID.randomUUID(), customerId, copy, total,
+        return new Order(id, customerId, copy, total,
                 requireCurrency(currency),
-                OrderStatus.PENDING, null, now, now, null);
+                OrderStatus.PENDING, null, null, now, now, null);
     }
 
     private static CurrencyCode requireCurrency(CurrencyCode currency) {
@@ -92,10 +102,11 @@ public class Order {
     public static Order reconstitute(UUID id, UUID customerId, List<OrderItem> items,
                                      BigDecimal totalAmount, CurrencyCode currency,
                                      OrderStatus status,
+                                     UUID reservationId,
                                      String cancellationReason,
                                      Instant createdAt, Instant updatedAt, Long version) {
         return new Order(id, customerId, List.copyOf(items), totalAmount,
-                currency, status, cancellationReason, createdAt, updatedAt, version);
+                currency, status, reservationId, cancellationReason, createdAt, updatedAt, version);
     }
 
     // ---- Transicoes da saga ----
@@ -103,6 +114,15 @@ public class Order {
     /** PENDING -> AWAITING_PAYMENT (estoque reservado, aguardando pagamento). */
     public void awaitPayment() {
         transitionTo(OrderStatus.AWAITING_PAYMENT, OrderStatus.PENDING);
+    }
+
+    /** PENDING -> AWAITING_PAYMENT, vinculando a reserva que protege os itens. */
+    public void awaitPayment(UUID reservationId) {
+        if (reservationId == null) {
+            throw new InvalidOrderException("reservationId obrigatorio");
+        }
+        transitionTo(OrderStatus.AWAITING_PAYMENT, OrderStatus.PENDING);
+        this.reservationId = reservationId;
     }
 
     /** AWAITING_PAYMENT -> CONFIRMED (pagamento aprovado). */
@@ -168,6 +188,10 @@ public class Order {
 
     public OrderStatus status() {
         return status;
+    }
+
+    public UUID reservationId() {
+        return reservationId;
     }
 
     public String cancellationReason() {

@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: payment-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5435/payments}
+    username: ${SPRING_DATASOURCE_USERNAME:ecom}
+    password: ${SPRING_DATASOURCE_PASSWORD:ecom}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/payments/migration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      auto-offset-reset: earliest
+ecom:
+  payment:
+    mock:
+      approve: ${PAYMENT_MOCK_APPROVE:true}
+  outbox:
+    enabled: ${OUTBOX_ENABLED:true}
+    fixed-delay-ms: 500

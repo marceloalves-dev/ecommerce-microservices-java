@@ -21,7 +21,11 @@ spring:
       hibernate.jdbc.time_zone: UTC
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    locations: classpath:db/orders/migration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      auto-offset-reset: earliest
 
 server:
   port: 8080
@@ -38,6 +42,14 @@ ecom:
       SKU-1: 10.00
       SKU-2: 4.00
       SKU-3: 25.50
+  inventory:
+    host: ${INVENTORY_HOST:localhost}
+    port: ${INVENTORY_PORT:9091}
+    deadline-ms: 1500
+  outbox:
+    enabled: ${OUTBOX_ENABLED:true}
+    fixed-delay-ms: 500
+
 
 management:
   endpoints:
