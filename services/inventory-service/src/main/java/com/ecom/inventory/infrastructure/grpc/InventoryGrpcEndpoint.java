@@ -8,6 +8,7 @@ import com.ecom.inventory.grpc.v1.InventoryServiceGrpc;
 import com.ecom.inventory.grpc.v1.ReservationStatus;
 import com.ecom.inventory.grpc.v1.ReserveStockRequest;
 import com.ecom.inventory.grpc.v1.ReserveStockResponse;
+import com.google.protobuf.Timestamp;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import io.micronaut.grpc.annotation.GrpcService;
@@ -50,12 +51,22 @@ public class InventoryGrpcEndpoint extends InventoryServiceGrpc.InventoryService
                     ? ReservationStatus.RESERVATION_STATUS_REJECTED
                     : ReservationStatus.RESERVATION_STATUS_CONFIRMED;
             observer.onNext(ReserveStockResponse.newBuilder()
-                    .setReservationId(reservation.id().toString()).setStatus(status).build());
+                    .setReservationId(reservation.id().toString())
+                    .setStatus(status)
+                    .setExpiresAt(toProtoTimestamp(reservation.expiresAt()))
+                    .build());
             observer.onCompleted();
         } catch (IllegalArgumentException ex) {
             observer.onError(Status.INVALID_ARGUMENT.withDescription(ex.getMessage()).asRuntimeException());
         } catch (RuntimeException ex) {
             observer.onError(Status.INTERNAL.withDescription("erro ao reservar estoque").withCause(ex).asRuntimeException());
         }
+    }
+
+    private static Timestamp toProtoTimestamp(java.time.Instant instant) {
+        return Timestamp.newBuilder()
+                .setSeconds(instant.getEpochSecond())
+                .setNanos(instant.getNano())
+                .build();
     }
 }

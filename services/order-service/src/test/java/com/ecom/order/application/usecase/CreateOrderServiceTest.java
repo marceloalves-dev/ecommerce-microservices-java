@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -64,7 +65,8 @@ class CreateOrderServiceTest {
                         claimId, invocation.getArgument(2), null));
         when(pricing.getPrice("SKU-1"))
                 .thenReturn(new PricingPort.Price(new BigDecimal("10.00"), CurrencyCode.BRL));
-        when(inventory.reserve(any(), any())).thenReturn(new InventoryPort.Reservation(UUID.randomUUID(), true));
+        when(inventory.reserve(any(), any())).thenReturn(new InventoryPort.Reservation(
+                UUID.randomUUID(), true, Instant.now().plusSeconds(900)));
         when(orders.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Order created = service.create(command);
@@ -85,6 +87,7 @@ class CreateOrderServiceTest {
                 new BigDecimal("10.00"),
                 CurrencyCode.BRL,
                 com.ecom.order.domain.model.OrderStatus.PENDING,
+                null,
                 null,
                 null,
                 java.time.Instant.now(),

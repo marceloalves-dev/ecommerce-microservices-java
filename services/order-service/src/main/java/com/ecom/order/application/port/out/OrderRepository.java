@@ -4,6 +4,7 @@ import com.ecom.order.domain.model.Order;
 import com.ecom.order.domain.model.OrderSummary;
 
 import java.util.List;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +18,8 @@ public interface OrderRepository {
     Order save(Order order);
 
     Optional<Order> findById(UUID id);
+
+    List<Order> findAwaitingPaymentExpiredAt(Instant now, int limit);
 
     OrderSlice findSlice(int page, int size);
 

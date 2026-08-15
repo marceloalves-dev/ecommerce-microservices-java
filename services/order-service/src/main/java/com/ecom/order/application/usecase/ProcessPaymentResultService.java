@@ -4,7 +4,6 @@ import com.ecom.contracts.event.EventEnvelope;
 import com.ecom.contracts.event.PaymentApproved;
 import com.ecom.contracts.event.PaymentDeclined;
 import com.ecom.contracts.event.OrderConfirmed;
-import com.ecom.contracts.event.OrderCancelled;
 import com.ecom.order.application.port.out.OrderEventPublisher;
 import com.ecom.order.application.port.in.ProcessPaymentResultUseCase;
 import com.ecom.order.application.port.out.OrderRepository;
@@ -33,6 +32,11 @@ class ProcessPaymentResultService implements ProcessPaymentResultUseCase {
         if (order.status() != OrderStatus.AWAITING_PAYMENT) {
             return;
         }
+        if (order.reservationExpiredAt(java.time.Instant.now())) {
+            ExpireAwaitingPaymentsService.cancelAndAppendEvent(order,
+                    ExpireAwaitingPaymentsService.PAYMENT_TIMEOUT_REASON, orders, events);
+            return;
+        }
         order.confirm();
         var saved = orders.save(order);
         events.append("order.confirmed.v1", saved.id(), "OrderConfirmed",
@@ -49,10 +53,6 @@ class ProcessPaymentResultService implements ProcessPaymentResultUseCase {
         if (order.status() != OrderStatus.AWAITING_PAYMENT) {
             return;
         }
-        order.cancel(event.payload().reason());
-        var saved = orders.save(order);
-        events.append("order.cancelled.v1", saved.id(), "OrderCancelled",
-                EventEnvelope.of("OrderCancelled", saved.id(),
-                        new OrderCancelled(saved.id(), saved.reservationId(), saved.cancellationReason())));
+        ExpireAwaitingPaymentsService.cancelAndAppendEvent(order, event.payload().reason(), orders, events);
     }
 }

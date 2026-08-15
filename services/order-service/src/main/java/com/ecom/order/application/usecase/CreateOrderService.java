@@ -83,7 +83,7 @@ class CreateOrderService implements CreateOrderUseCase {
         Order order = Order.create(orderId, command.customerId(), items, currencies.getFirst());
         InventoryPort.Reservation reservation = inventoryPort.reserve(order.id(), order.items());
         if (reservation.accepted()) {
-            order.awaitPayment(reservation.id());
+            order.awaitPayment(reservation.id(), reservation.expiresAt());
         } else {
             order.reject("estoque indisponivel");
         }

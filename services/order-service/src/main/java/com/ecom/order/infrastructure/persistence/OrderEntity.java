@@ -41,6 +41,9 @@ public class OrderEntity {
     @Column(name = "reservation_id")
     private UUID reservationId;
 
+    @Column(name = "reservation_expires_at")
+    private Instant reservationExpiresAt;
+
     @Column(name = "total_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal totalAmount;
 
@@ -70,7 +73,7 @@ public class OrderEntity {
     }
 
     public OrderEntity(UUID id, UUID customerId, OrderStatus status, BigDecimal totalAmount,
-                       CurrencyCode currency, UUID reservationId, String cancellationReason,
+                       CurrencyCode currency, UUID reservationId, Instant reservationExpiresAt, String cancellationReason,
                        Instant createdAt, Instant updatedAt, Long version) {
         this.id = id;
         this.customerId = customerId;
@@ -78,6 +81,7 @@ public class OrderEntity {
         this.totalAmount = totalAmount;
         this.currency = currency;
         this.reservationId = reservationId;
+        this.reservationExpiresAt = reservationExpiresAt;
         this.cancellationReason = cancellationReason;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -118,6 +122,10 @@ public class OrderEntity {
         return reservationId;
     }
 
+    public Instant getReservationExpiresAt() {
+        return reservationExpiresAt;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -139,6 +147,7 @@ public class OrderEntity {
         this.totalAmount = order.totalAmount();
         this.currency = order.currency();
         this.reservationId = order.reservationId();
+        this.reservationExpiresAt = order.reservationExpiresAt();
         this.cancellationReason = order.cancellationReason();
         this.updatedAt = order.updatedAt();
     }

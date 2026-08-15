@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package inventory.v1;
 
+import "google/protobuf/timestamp.proto";
+
 option java_multiple_files = true;
 option java_package = "com.ecom.inventory.grpc.v1";
 
@@ -32,6 +34,7 @@ message ReserveStockRequest {
 message ReserveStockResponse {
   string reservation_id = 1;
   ReservationStatus status = 2;
+  google.protobuf.Timestamp expires_at = 3;
 }
 
 enum ReservationStatus {

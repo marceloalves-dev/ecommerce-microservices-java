@@ -49,6 +49,9 @@ ecom:
   outbox:
     enabled: ${OUTBOX_ENABLED:true}
     fixed-delay-ms: 500
+  saga:
+    payment-expiration:
+      fixed-delay-ms: ${PAYMENT_EXPIRATION_FIXED_DELAY_MS:60000}
 
 
 management:

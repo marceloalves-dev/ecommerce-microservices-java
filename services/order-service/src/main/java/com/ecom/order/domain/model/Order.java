@@ -12,7 +12,7 @@ import java.util.UUID;
 /**
  * Agregado raiz do pedido. DomInio puro — sem JPA, sem Spring.
  *
- * <p>Transicoes de estado <b>so</b> via metodos de domInio ({@link #awaitPayment()},
+ * <p>Transicoes de estado <b>so</b> via metodos de domInio ({@link #awaitPayment(UUID, Instant)},
  * {@link #confirm()}, {@link #cancel(String)}, {@link #reject(String)}). Nao existe
  * {@code setStatus()}: cada metodo valida a transicao e lanca
  * {@link IllegalStateTransitionException} se invalida.
@@ -29,13 +29,15 @@ public class Order {
     private final CurrencyCode currency;
     private OrderStatus status;
     private UUID reservationId;
+    private Instant reservationExpiresAt;
     private String cancellationReason;
     private final Instant createdAt;
     private Instant updatedAt;
     private final Long version;
 
     private Order(UUID id, UUID customerId, List<OrderItem> items, BigDecimal totalAmount,
-                  CurrencyCode currency, OrderStatus status, UUID reservationId, String cancellationReason,
+                  CurrencyCode currency, OrderStatus status, UUID reservationId, Instant reservationExpiresAt,
+                  String cancellationReason,
                   Instant createdAt, Instant updatedAt, Long version) {
         this.id = id;
         this.customerId = customerId;
@@ -44,6 +46,7 @@ public class Order {
         this.currency = currency;
         this.status = status;
         this.reservationId = reservationId;
+        this.reservationExpiresAt = reservationExpiresAt;
         this.cancellationReason = cancellationReason;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -88,7 +91,7 @@ public class Order {
         Instant now = Instant.now();
         return new Order(id, customerId, copy, total,
                 requireCurrency(currency),
-                OrderStatus.PENDING, null, null, now, now, null);
+                OrderStatus.PENDING, null, null, null, now, now, null);
     }
 
     private static CurrencyCode requireCurrency(CurrencyCode currency) {
@@ -103,26 +106,26 @@ public class Order {
                                      BigDecimal totalAmount, CurrencyCode currency,
                                      OrderStatus status,
                                      UUID reservationId,
+                                     Instant reservationExpiresAt,
                                      String cancellationReason,
                                      Instant createdAt, Instant updatedAt, Long version) {
         return new Order(id, customerId, List.copyOf(items), totalAmount,
-                currency, status, reservationId, cancellationReason, createdAt, updatedAt, version);
+                currency, status, reservationId, reservationExpiresAt, cancellationReason, createdAt, updatedAt, version);
     }
 
     // ---- Transicoes da saga ----
 
-    /** PENDING -> AWAITING_PAYMENT (estoque reservado, aguardando pagamento). */
-    public void awaitPayment() {
-        transitionTo(OrderStatus.AWAITING_PAYMENT, OrderStatus.PENDING);
-    }
-
     /** PENDING -> AWAITING_PAYMENT, vinculando a reserva que protege os itens. */
-    public void awaitPayment(UUID reservationId) {
+    public void awaitPayment(UUID reservationId, Instant reservationExpiresAt) {
         if (reservationId == null) {
             throw new InvalidOrderException("reservationId obrigatorio");
         }
+        if (reservationExpiresAt == null) {
+            throw new InvalidOrderException("reservationExpiresAt obrigatorio");
+        }
         transitionTo(OrderStatus.AWAITING_PAYMENT, OrderStatus.PENDING);
         this.reservationId = reservationId;
+        this.reservationExpiresAt = reservationExpiresAt;
     }
 
     /** AWAITING_PAYMENT -> CONFIRMED (pagamento aprovado). */
@@ -142,6 +145,14 @@ public class Order {
         validateReason(reason);
         transitionTo(OrderStatus.REJECTED, OrderStatus.PENDING);
         this.cancellationReason = reason.trim();
+    }
+
+    /** Uma reserva vencida jamais pode resultar em confirmacao de pedido. */
+    public boolean reservationExpiredAt(Instant now) {
+        if (now == null) {
+            throw new InvalidOrderException("instante obrigatorio");
+        }
+        return reservationExpiresAt == null || !reservationExpiresAt.isAfter(now);
     }
 
     private static void validateReason(String reason) {
@@ -192,6 +203,10 @@ public class Order {
 
     public UUID reservationId() {
         return reservationId;
+    }
+
+    public Instant reservationExpiresAt() {
+        return reservationExpiresAt;
     }
 
     public String cancellationReason() {

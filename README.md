@@ -63,6 +63,8 @@ pedido. Kubernetes, gateway e observabilidade continuam apenas no roadmap.
 - Contrato Protobuf versionado e geração de stubs no Maven.
 - Reserva de estoque atômica e idempotente por `orderId`, com TTL persistido e
   liberação automática de reservas vencidas.
+- O prazo da reserva também é propagado ao pedido; um job cancela pedidos sem
+  pagamento no prazo e publica a compensação para o estoque.
 - `order-service` reserva por gRPC e publica `OrderCreated` por transactional outbox.
 - `payment-service` processa uma única cobrança por pedido e devolve o resultado por outbox.
 - Consumers usam registro atômico de eventos processados; confirmações e cancelamentos
@@ -293,7 +295,7 @@ estoque em PostgreSQL real.
 
 - [x] **Fase 1:** fundação, domínio, persistência, idempotência e limites.
 - [~] **Fase 2:** inventory via gRPC e payment via Kafka; falta o cenário E2E único.
-- [~] **Fase 3:** outbox e inbox já antecipados; retry, circuit breaker, DLQ e timeout da saga pendentes.
+- [~] **Fase 3:** outbox, inbox e timeout da saga já antecipados; retry, circuit breaker, DLQ e refund pendentes.
 - [ ] **Fase 4:** Kubernetes, Helm, HPA, PDB, NetworkPolicy e testes de caos.
 - [ ] **Fase 5:** OpenTelemetry e Grafana Stack.
 - [ ] **Fase 6:** API Gateway, JWT, KEDA e CI.

@@ -8,6 +8,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,6 +41,15 @@ class OrderPersistenceAdapter implements OrderRepository {
     @Override
     public Optional<Order> findById(UUID id) {
         return jpa.findById(id).map(OrderPersistenceMapper::toDomain);
+    }
+
+    @Override
+    public List<Order> findAwaitingPaymentExpiredAt(Instant now, int limit) {
+        return jpa.findByStatusAndReservationExpiresAtLessThanEqualOrderByReservationExpiresAtAsc(
+                        com.ecom.order.domain.model.OrderStatus.AWAITING_PAYMENT, now, PageRequest.of(0, limit))
+                .stream()
+                .map(OrderPersistenceMapper::toDomain)
+                .toList();
     }
 
     @Override

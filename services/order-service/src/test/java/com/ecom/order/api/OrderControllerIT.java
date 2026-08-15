@@ -23,6 +23,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -55,7 +56,8 @@ class OrderControllerIT {
     @BeforeEach
     void reserveInventory() {
         when(inventory.reserve(any(), any()))
-                .thenAnswer(invocation -> new InventoryPort.Reservation(UUID.randomUUID(), true));
+                .thenAnswer(invocation -> new InventoryPort.Reservation(
+                        UUID.randomUUID(), true, Instant.now().plusSeconds(900)));
     }
 
     @Test

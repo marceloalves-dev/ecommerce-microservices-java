@@ -5,6 +5,7 @@ import com.ecom.order.domain.exception.InvalidOrderException;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -35,7 +36,7 @@ class OrderTest {
     void fluxo_feliz_pending_awaiting_confirmed() {
         Order order = novoPedido();
 
-        order.awaitPayment();
+        order.awaitPayment(UUID.randomUUID(), Instant.now().plusSeconds(900));
         assertThat(order.status()).isEqualTo(OrderStatus.AWAITING_PAYMENT);
 
         order.confirm();
@@ -45,7 +46,7 @@ class OrderTest {
     @Test
     void cancelamento_com_compensacao_guarda_motivo() {
         Order order = novoPedido();
-        order.awaitPayment();
+        order.awaitPayment(UUID.randomUUID(), Instant.now().plusSeconds(900));
 
         order.cancel("pagamento recusado");
 
@@ -122,7 +123,7 @@ class OrderTest {
     @Test
     void motivo_invalido_nao_altera_estado() {
         Order order = novoPedido();
-        order.awaitPayment();
+        order.awaitPayment(UUID.randomUUID(), Instant.now().plusSeconds(900));
 
         assertThatThrownBy(() -> order.cancel(" "))
                 .isInstanceOf(InvalidOrderException.class);

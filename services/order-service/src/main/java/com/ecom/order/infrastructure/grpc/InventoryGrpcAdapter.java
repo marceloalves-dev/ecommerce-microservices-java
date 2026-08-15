@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -39,7 +40,8 @@ class InventoryGrpcAdapter implements InventoryPort {
                                     .setQuantity(item.quantity()).build()).toList())
                             .build());
             return new Reservation(UUID.fromString(response.getReservationId()),
-                    response.getStatus() == ReservationStatus.RESERVATION_STATUS_CONFIRMED);
+                    response.getStatus() == ReservationStatus.RESERVATION_STATUS_CONFIRMED,
+                    Instant.ofEpochSecond(response.getExpiresAt().getSeconds(), response.getExpiresAt().getNanos()));
         } catch (StatusRuntimeException ex) {
             Status.Code code = ex.getStatus().getCode();
             if (code == Status.Code.UNAVAILABLE || code == Status.Code.DEADLINE_EXCEEDED) {
