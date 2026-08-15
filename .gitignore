@@ -21,7 +21,7 @@ target/
 *.log
 logs/
 build/
-out/
+/out/
 bin/
 
 # OS
